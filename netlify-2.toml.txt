@@ -1,0 +1,18 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/db"
+  to = "/.netlify/functions/db"
+  status = 200
+
+[[redirects]]
+  from = "/api/auth"
+  to = "/.netlify/functions/auth"
+  status = 200
+
+[[redirects]]
+  from = "/api/dh-db"
+  to = "/.netlify/functions/dh-db"
+  status = 200
