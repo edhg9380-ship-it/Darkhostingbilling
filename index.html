@@ -398,8 +398,8 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
       <p class="modal-sub">Login to your Dark Hosting account</p>
       <div class="amsg" id="lerr"></div>
       <div class="amsg ok" id="lok"></div>
-      <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="you@example.com"></div>
-      <div class="fg"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••"></div>
+      <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="you@example.com" autocomplete="off"></div>
+      <div class="fg"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="new-password"></div>
       <button class="auth-btn" onclick="doLogin()">Login →</button>
       <p class="sw">No account? <span onclick="swForm('register')">Register here</span></p>
     </div>
@@ -409,9 +409,9 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
       <p class="modal-sub">Join Dark Hosting today — it's free!</p>
       <div class="amsg" id="rerr"></div>
       <div class="amsg ok" id="rok"></div>
-      <div class="fg"><label>Username</label><input type="text" id="r-user" placeholder="CoolGamer123"></div>
-      <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="you@example.com"></div>
-      <div class="fg"><label>Password</label><input type="password" id="r-pass" placeholder="Min 6 characters"></div>
+      <div class="fg"><label>Username</label><input type="text" id="r-user" placeholder="CoolGamer123" autocomplete="off"></div>
+      <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="you@example.com" autocomplete="off"></div>
+      <div class="fg"><label>Password</label><input type="password" id="r-pass" placeholder="Min 6 characters" autocomplete="new-password"></div>
       <button class="auth-btn" onclick="doRegister()">Create Account →</button>
       <p class="sw">Have an account? <span onclick="swForm('login')">Login here</span></p>
     </div>
@@ -461,7 +461,7 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
   <section class="sec reveal">
     <h2>Meet Our Owners</h2><p class="sub">People behind Dark Hosting</p>
     <div class="owners-box">
-      <div class="owner"><h3>DANGER RONY</h3><p>FOUNDER • Handles development.</p></div>
+      <div class="owner"><h3>DANGER RONY</h3><p>Owner • Handles development.</p></div>
       <div class="owner"><h3>THE_GAMING_ZONE</h3><p>Founder • Development, servers and backend systems.</p></div>
       <div class="owner"><h3>ITZ DRAGON YT</h3><p>Founder • Security, backend infrastructure and protection.</p></div>
       <div class="owner"><h3>CONICDARK</h3><p>Co-Founder • Support, management and user experience.</p></div>
@@ -677,7 +677,7 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
             <input class="adm-search" id="usearch" placeholder="🔍 Search…" oninput="renderUsers()">
           </div>
           <table class="adm-tbl">
-            <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Password</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
             <tbody id="tbl-users"></tbody>
           </table>
         </div>
@@ -694,7 +694,7 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
             <input class="adm-search" id="osearch" placeholder="🔍 Search user/plan…" oninput="renderOrders()">
           </div>
           <table class="adm-tbl">
-            <thead><tr><th>ID</th><th>User</th><th>Plan</th><th>Price</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>ID</th><th>User</th><th>Plan</th><th>Code</th><th>Price</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="tbl-orders"></tbody>
           </table>
         </div>
@@ -1109,6 +1109,7 @@ function renderOrders(){
     <td><span class="id-badge">#${o.id}</span></td>
     <td><strong>${o.username}</strong><br><span style="color:#555;font-size:11px">${o.email}</span></td>
     <td>${o.planType==='vps'?'☁️':'🎮'} ${o.planName}</td>
+    <td><code style="background:#1a1a2e;color:#a78bfa;padding:3px 7px;border-radius:6px;font-size:11px;user-select:all">${o.code||'-'}</code></td>
     <td style="color:#8b5cf6;font-weight:700">₹${o.price}</td>
     <td style="color:#555;font-size:12px">${o.date}</td>
     <td><span class="badge ${statusBadge(o.status)}" style="padding:3px 10px;border-radius:8px;font-size:11px">${o.status}</span></td>
@@ -1120,7 +1121,7 @@ function renderOrders(){
         <option value="rejected"  ${o.status==='rejected'  ?'selected':''}>❌ Rejected</option>
       </select>
     </td></tr>`).join('')
-    : `<tr><td colspan="7" style="color:#555;text-align:center;padding:25px">${(DB.orders||[]).length?'No match.':'No orders yet.'}</td></tr>`;
+    : `<tr><td colspan="8" style="color:#555;text-align:center;padding:25px">${(DB.orders||[]).length?'No match.':'No orders yet.'}</td></tr>`;
 }
 function setOrderStatus(id,status){
   const o=(DB.orders||[]).find(x=>x.id===id); if(!o) return;
@@ -1210,6 +1211,10 @@ function renderUsers(){
     <td><span class="id-badge ${u.id===1?'id1':''}">#${u.id}</span></td>
     <td><strong>${u.username}</strong></td>
     <td style="color:#aaa">${u.email}</td>
+    <td>
+      <span id="upw-${u.id}" style="color:#555;font-family:monospace;font-size:12px">••••••</span>
+      <button onclick="toggleUserPass(${u.id},'${u.password}')" style="background:none;border:none;cursor:pointer;color:#8b5cf6;font-size:13px;margin-left:4px">👁</button>
+    </td>
     <td><span class="badge ${u.isAdmin?'by':'bb'}">${u.isAdmin?'👑 Admin':'👤 User'}</span></td>
     <td style="color:#555">${u.joinedAt||'-'}</td>
     <td style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1220,7 +1225,13 @@ function renderUsers(){
           : `<button class="act-btn makadm" onclick="setAdmin(${u.id},true)">Make Admin</button>`}
       ${u.id===1 ? '' : `<button class="act-btn del" onclick="delUser(${u.id})">🗑 Delete</button>`}
     </td></tr>`).join('')
-    : `<tr><td colspan="6" style="color:#555;text-align:center;padding:25px">${DB.users.length?'No match.':'No users yet.'}</td></tr>`;
+    : `<tr><td colspan="7" style="color:#555;text-align:center;padding:25px">${DB.users.length?'No match.':'No users yet.'}</td></tr>`;
+}
+function toggleUserPass(id,pass){
+  const el=document.getElementById('upw-'+id);
+  if(!el) return;
+  if(el.textContent==='••••••'){ el.textContent=pass; el.style.color='#a78bfa'; }
+  else { el.textContent='••••••'; el.style.color='#555'; }
 }
 function setAdmin(id,val){
   const u=DB.users.find(x=>x.id===id); if(!u) return;
