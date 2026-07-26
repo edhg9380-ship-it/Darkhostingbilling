@@ -833,7 +833,8 @@ function seedDefaults(){
     ];
     DB.nextNodeId=5;
   }
-  if(DB.categories.length===0){
+  // Always ensure categories exist (not dependent on other data)
+  if(!DB.categories || DB.categories.length===0){
     DB.categories=[
       {id:1,name:"Minecraft",icon:"🎮",slug:"minecraft",description:"High-performance Minecraft server hosting with full customization"},
       {id:2,name:"VPS",icon:"☁️",slug:"vps",description:"Reliable Virtual Private Server solutions for your applications"},
@@ -879,6 +880,11 @@ async function initDB(){
     setSyncStatus('err','Offline — using local data');
     console.warn('initDB fetch failed:',e);
     if(DB.plans.length===0) seedDefaults();
+  }
+  // Ensure categories always exist (critical for UI)
+  if(!DB.categories || DB.categories.length===0){
+    console.log('Initializing default categories...');
+    seedDefaults();
   }
 }
 
@@ -1169,6 +1175,8 @@ function setOrderStatus(id,status){
 // ═══════ ADMIN — CATEGORIES ═══════
 function renderAdmCategories(){
   const tbody=document.getElementById('tbl-categories');
+  if(!tbody) { console.error('Categories table not found'); return; }
+  console.log('Rendering categories:', DB.categories);
   tbody.innerHTML=DB.categories.length ? DB.categories.map(cat=>{
     const planCount=DB.plans.filter(p=>p.type===cat.slug).length;
     return `<tr>
@@ -1347,12 +1355,15 @@ function delUser(id){
 
 // ═══════ ADMIN TAB ═══════
 function aTab(name,el){
+  console.log('Switching to tab:', name);
   document.querySelectorAll('.adm-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('ap-'+name).classList.add('active');
+  const panel = document.getElementById('ap-'+name);
+  if(!panel) { console.error('Panel not found:', 'ap-'+name); return; }
+  panel.classList.add('active');
   document.querySelectorAll('.adm-item').forEach(i=>i.classList.remove('on'));
   if(el) el.classList.add('on');
   if(name==='dashboard') renderDash();
-  if(name==='categories') renderAdmCategories();
+  if(name==='categories') { console.log('Rendering categories'); renderAdmCategories(); }
   if(name==='plans')     renderAdmPlans();
   if(name==='nodes')     renderAdmNodes();
   if(name==='users')     renderUsers();
@@ -1366,13 +1377,17 @@ function aAlert(id,msg,type){
 
 // ═══════ BOOT ═══════
 (async function boot(){
+  console.log('🚀 Booting Dark Hosting...');
   await initDB();
+  console.log('✅ DB Initialized');
+  console.log('Categories in DB:', DB.categories);
   buildFooters();
   refreshNav();
   renderAdmCategories();
   renderMcPlans();
   renderVpsPlans();
   renderLoc();
+  console.log('✅ All panels rendered');
   // Hide loading screen
   const ld=document.getElementById('loading');
   ld.classList.add('hide');
