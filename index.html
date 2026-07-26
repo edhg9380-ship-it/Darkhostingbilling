@@ -595,6 +595,7 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
       </div>
       <h4>Main</h4>
       <div class="adm-item on"  onclick="aTab('dashboard',this)">📊 Dashboard</div>
+      <div class="adm-item"     onclick="aTab('categories',this)">📂 Manage Category</div>
       <div class="adm-item"     onclick="aTab('plans',this)">📦 Manage Plans</div>
       <div class="adm-item"     onclick="aTab('nodes',this)">🌐 Node Status</div>
       <div class="adm-item"     onclick="aTab('users',this)">👥 All Users</div>
@@ -615,6 +616,31 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
           <table class="adm-tbl">
             <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
             <tbody id="tbl-recent"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CATEGORIES -->
+      <div class="adm-panel" id="ap-categories">
+        <div class="adm-title">📂 Manage Category</div>
+        <div class="adm-sub2">Create, edit, or remove service categories</div>
+        <div class="adm-alert" id="al-categories"></div>
+        <div class="sc">
+          <h3>➕ Add New Category</h3>
+          <div class="form-grid">
+            <div class="fg2"><label>Category Name</label><input id="cat-name" placeholder="e.g. Minecraft, VPS, Dedicated"></div>
+            <div class="fg2"><label>Category Icon</label><input id="cat-icon" placeholder="e.g. 🎮, ☁️, 🖥️"></div>
+            <div class="fg2"><label>Category Slug</label><input id="cat-slug" placeholder="e.g. minecraft, vps, dedicated"></div>
+            <div class="fg2 full"><label>Category Description</label>
+              <textarea id="cat-desc" placeholder="Brief description of this category..."></textarea></div>
+          </div>
+          <button class="adm-btn purple" onclick="addCategory()">Add Category</button>
+        </div>
+        <div class="sc">
+          <h3>📋 All Categories</h3>
+          <table class="adm-tbl">
+            <thead><tr><th>Icon</th><th>Name</th><th>Slug</th><th>Description</th><th>Plans</th><th>Actions</th></tr></thead>
+            <tbody id="tbl-categories"></tbody>
           </table>
         </div>
       </div>
@@ -715,11 +741,13 @@ let DB = {
   plans:       [],
   nodes:       [],
   orders:      [],
+  categories:  [],
   session:     null,
   nextUserId:  2,
   nextPlanId:  11,
   nextNodeId:  5,
-  nextOrderId: 1
+  nextOrderId: 1,
+  nextCategoryId: 1
 };
 
 // ── Sync helpers ──────────────────────────────────────────────────────
@@ -740,8 +768,8 @@ function setSyncStatus(state,msg){
 async function pushToDB(){
   if(_syncBusy) return; _syncBusy=true;
   setSyncStatus('busy','Saving…');
-  const payload={users:DB.users,plans:DB.plans,nodes:DB.nodes,orders:DB.orders,
-    nextUserId:DB.nextUserId,nextPlanId:DB.nextPlanId,nextNodeId:DB.nextNodeId,nextOrderId:DB.nextOrderId};
+  const payload={users:DB.users,plans:DB.plans,nodes:DB.nodes,orders:DB.orders,categories:DB.categories,
+    nextUserId:DB.nextUserId,nextPlanId:DB.nextPlanId,nextNodeId:DB.nextNodeId,nextOrderId:DB.nextOrderId,nextCategoryId:DB.nextCategoryId};
   try{
     const r=await fetch(DH_API,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!r.ok) throw new Error('HTTP '+r.status);
@@ -753,8 +781,8 @@ async function pushToDB(){
 
 function saveLocal(){
   localStorage.setItem('dh_cache',JSON.stringify({
-    users:DB.users,plans:DB.plans,nodes:DB.nodes,orders:DB.orders,
-    nextUserId:DB.nextUserId,nextPlanId:DB.nextPlanId,nextNodeId:DB.nextNodeId,nextOrderId:DB.nextOrderId
+    users:DB.users,plans:DB.plans,nodes:DB.nodes,orders:DB.orders,categories:DB.categories,
+    nextUserId:DB.nextUserId,nextPlanId:DB.nextPlanId,nextNodeId:DB.nextNodeId,nextOrderId:DB.nextOrderId,nextCategoryId:DB.nextCategoryId
   }));
   clearTimeout(_syncTimer); _syncTimer=setTimeout(pushToDB,800);
 }
@@ -768,10 +796,12 @@ function applyRemote(data){
   DB.plans       = data.plans       || [];
   DB.nodes       = data.nodes       || [];
   DB.orders      = data.orders      || [];
+  DB.categories  = data.categories  || [];
   DB.nextUserId  = data.nextUserId  || (maxId(DB.users)+1);
   DB.nextPlanId  = data.nextPlanId  || 11;
   DB.nextNodeId  = data.nextNodeId  || 5;
   DB.nextOrderId = data.nextOrderId || 1;
+  DB.nextCategoryId = data.nextCategoryId || (maxId(DB.categories)+1);
 }
 
 function seedDefaults(){
@@ -802,6 +832,13 @@ function seedDefaults(){
       {id:4,name:"🇸🇬 Singapore",location:"Singapore Node",active:true,top:54,left:76},
     ];
     DB.nextNodeId=5;
+  }
+  if(DB.categories.length===0){
+    DB.categories=[
+      {id:1,name:"Minecraft",icon:"🎮",slug:"minecraft",description:"High-performance Minecraft server hosting with full customization"},
+      {id:2,name:"VPS",icon:"☁️",slug:"vps",description:"Reliable Virtual Private Server solutions for your applications"},
+    ];
+    DB.nextCategoryId=3;
   }
 }
 
@@ -1129,6 +1166,64 @@ function setOrderStatus(id,status){
   toast(`Order #${id} → ${status}`);
 }
 
+// ═══════ ADMIN — CATEGORIES ═══════
+function renderAdmCategories(){
+  const tbody=document.getElementById('tbl-categories');
+  tbody.innerHTML=DB.categories.length ? DB.categories.map(cat=>{
+    const planCount=DB.plans.filter(p=>p.type===cat.slug).length;
+    return `<tr>
+      <td style="font-size:20px">${cat.icon}</td>
+      <td><strong>${cat.name}</strong></td>
+      <td><code style="background:#1a1a2e;color:#a78bfa;padding:3px 7px;border-radius:6px;font-size:11px">${cat.slug}</code></td>
+      <td style="color:#aaa;font-size:13px">${cat.description}</td>
+      <td><span class="badge" style="background:#6366f1;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600">${planCount} plans</span></td>
+      <td style="display:flex;gap:8px;align-items:center">
+        <button class="act-btn" style="background:#4f46e5;border:none" onclick="editCategory(${cat.id})">✏️ Edit</button>
+        <button class="act-btn del" onclick="delCategory(${cat.id})">🗑 Delete</button>
+      </td></tr>`;
+  }).join('') : '<tr><td colspan="6" style="color:#555;text-align:center;padding:20px">No categories yet.</td></tr>';
+}
+function addCategory(){
+  const name=document.getElementById('cat-name').value.trim();
+  const icon=document.getElementById('cat-icon').value.trim();
+  const slug=document.getElementById('cat-slug').value.trim();
+  const desc=document.getElementById('cat-desc').value.trim();
+  
+  if(!name||!icon||!slug||!desc) return aAlert('al-categories','Please fill all fields.','err');
+  if(DB.categories.find(c=>c.slug===slug)) return aAlert('al-categories','A category with this slug already exists!','err');
+  
+  DB.categories.push({id:DB.nextCategoryId++, name, icon, slug, description:desc});
+  saveLocal();
+  ['cat-name','cat-icon','cat-slug','cat-desc'].forEach(id=>document.getElementById(id).value='');
+  renderAdmCategories();
+  aAlert('al-categories','✅ Category "'+name+'" added!','ok');
+  toast('✅ Category added!');
+}
+function editCategory(id){
+  const cat=DB.categories.find(c=>c.id===id);
+  if(!cat) return;
+  const newName=prompt('Edit category name:',cat.name);
+  if(newName===null) return;
+  if(!newName.trim()) return aAlert('al-categories','Name cannot be empty.','err');
+  cat.name=newName.trim();
+  saveLocal();
+  renderAdmCategories();
+  aAlert('al-categories','✅ Category updated!','ok');
+  toast('✅ Category updated!');
+}
+function delCategory(id){
+  const cat=DB.categories.find(c=>c.id===id);
+  if(!cat) return;
+  const planCount=DB.plans.filter(p=>p.type===cat.slug).length;
+  if(planCount>0) return aAlert('al-categories',`Cannot delete category with ${planCount} associated plans. Delete the plans first.`,'err');
+  if(!confirm(`Delete category "${cat.name}"?`)) return;
+  DB.categories=DB.categories.filter(c=>c.id!==id);
+  saveLocal();
+  renderAdmCategories();
+  aAlert('al-categories','✅ Category deleted!','ok');
+  toast('🗑 Category deleted.');
+}
+
 // ═══════ ADMIN — PLANS ═══════
 function renderAdmPlans(){
   renderMiniList('minecraft','adm-mc');
@@ -1257,6 +1352,7 @@ function aTab(name,el){
   document.querySelectorAll('.adm-item').forEach(i=>i.classList.remove('on'));
   if(el) el.classList.add('on');
   if(name==='dashboard') renderDash();
+  if(name==='categories') renderAdmCategories();
   if(name==='plans')     renderAdmPlans();
   if(name==='nodes')     renderAdmNodes();
   if(name==='users')     renderUsers();
