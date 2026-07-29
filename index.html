@@ -514,21 +514,9 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
   <div class="srv-layout">
     <div class="sidebar">
       <h3>Categories</h3>
-      <a onclick="sTab('mc')" id="st-mc" class="tab-on">🎮 Minecraft</a>
-      <a onclick="sTab('vps')" id="st-vps">☁️ VPS</a>
+      <div id="srv-cat-tabs"></div>
     </div>
-    <div class="srv-content">
-      <div id="sp-mc" class="srv-panel active">
-        <div class="srv-card"><h2>Minecraft Hosting</h2>
-          <p>Ultra-fast Minecraft hosting with optimized performance, low latency, and powerful hardware. Perfect for survival servers, modpacks, and large communities.</p>
-          <button class="bp" onclick="go('minecraft')">View Plans</button></div>
-      </div>
-      <div id="sp-vps" class="srv-panel">
-        <div class="srv-card"><h2>AMD VPS Hosting</h2>
-          <p>High-performance VPS powered by AMD Ryzen CPUs. Ideal for websites, bots, game servers with full root access and maximum control.</p>
-          <button class="bp" onclick="go('vps')">View Plans</button></div>
-      </div>
-    </div>
+    <div class="srv-content" id="srv-cat-panels"></div>
   </div>
   <div class="footer" id="ft2"></div>
 </div>
@@ -595,7 +583,7 @@ body{background:linear-gradient(135deg,#070816,#0d1026,#111536);color:#fff;overf
       </div>
       <h4>Main</h4>
       <div class="adm-item on"  onclick="aTab('dashboard',this)">📊 Dashboard</div>
-      <div class="adm-item"     onclick="aTab('categories',this)">🏷️ Categories</div>
+      <div class="adm-item"     onclick="aTab('categories',this)">🏷️ Manage Categories</div>
       <div class="adm-item"     onclick="aTab('plans',this)">📦 Manage Plans</div>
       <div class="adm-item"     onclick="aTab('nodes',this)">🌐 Node Status</div>
       <div class="adm-item"     onclick="aTab('users',this)">👥 All Users</div>
@@ -986,15 +974,26 @@ function toast(msg){
 
 // ═══════ PAGE ROUTING ═══════
 function go(name){
+  // Handle custom category pages (cat-1, cat-2, etc.)
+  if(name.startsWith('cat-')){
+    renderPublicCustomCats();
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const pg=document.getElementById('page-'+name);
+    if(pg){ pg.classList.add('active'); window.scrollTo({top:0,behavior:'smooth'}); }
+    return;
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
+  const pg=document.getElementById('page-'+name);
+  if(!pg){ console.warn('Page not found:',name); return; }
+  pg.classList.add('active');
   window.scrollTo({top:0,behavior:'smooth'});
   if(name==='minecraft') renderMcPlans();
   if(name==='vps')       renderVpsPlans();
   if(name==='locations') renderLoc();
+  if(name==='services')  renderServicesPage();
   if(name==='admin'){    renderDash();renderAdmPlans();renderAdmNodes();renderUsers();renderCategories(); }
   setTimeout(()=>{
-    document.getElementById('page-'+name).querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+    pg.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
   },60);
 }
 function delay(fn){ setTimeout(fn,120); }
@@ -1010,11 +1009,33 @@ document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
 function faqT(el){ el.classList.toggle('open'); }
 
 // ═══════ SERVICES TABS ═══════
-function sTab(t){
+// ═══════ SERVICES PAGE (dynamic categories) ═══════
+const CAT_DESCS = {
+  minecraft: 'Ultra-fast Minecraft hosting with optimized performance, low latency, and powerful hardware. Perfect for survival servers, modpacks, and large communities.',
+  vps: 'High-performance VPS powered by AMD Ryzen CPUs. Ideal for websites, bots, game servers with full root access and maximum control.'
+};
+function renderServicesPage(){
+  const tabs=document.getElementById('srv-cat-tabs');
+  const panels=document.getElementById('srv-cat-panels');
+  if(!tabs||!panels) return;
+  tabs.innerHTML=DB.categories.map((c,i)=>`<a onclick="sTab('cat${c.id}')" id="st-cat${c.id}" class="${i===0?'tab-on':''}">${c.icon} ${c.name}</a>`).join('');
+  panels.innerHTML=DB.categories.map((c,i)=>{
+    const dest=c.id===1?'minecraft':c.id===2?'vps':'cat-'+c.id;
+    const desc=c.desc||(c.id===1?CAT_DESCS.minecraft:c.id===2?CAT_DESCS.vps:`${c.name} hosting plans.`);
+    return `<div id="sp-cat${c.id}" class="srv-panel${i===0?' active':''}">
+      <div class="srv-card"><h2>${c.icon} ${c.name}</h2>
+        <p>${desc}</p>
+        <button class="bp" onclick="go('${dest}')">View Plans</button>
+      </div></div>`;
+  }).join('');
+}
+function sTab(id){
   document.querySelectorAll('.srv-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('sp-'+t).classList.add('active');
-  ['st-mc','st-vps'].forEach(id=>document.getElementById(id).classList.remove('tab-on'));
-  document.getElementById('st-'+t).classList.add('tab-on');
+  document.querySelectorAll('#srv-cat-tabs a').forEach(a=>a.classList.remove('tab-on'));
+  const panel=document.getElementById('sp-'+id);
+  const tab=document.getElementById('st-'+id);
+  if(panel) panel.classList.add('active');
+  if(tab) tab.classList.add('tab-on');
 }
 
 // ═══════ PLANS RENDER ═══════
@@ -1221,7 +1242,7 @@ function addCategory(){
   DB.categories.push({id:DB.nextCatId++,name,icon,desc});
   saveLocal();
   ['cat-name','cat-icon','cat-desc'].forEach(id=>document.getElementById(id).value='');
-  renderCategories(); renderAdmPlans();
+  renderCategories(); renderAdmPlans(); renderServicesPage();
   aAlert('al-cat',`✅ Category "${name}" added!`,'ok');
   toast('✅ Category added!');
 }
@@ -1231,7 +1252,7 @@ function editCategory(id){
   const icon=prompt('Icon (emoji):',c.icon)||c.icon;
   const desc=prompt('Description:',c.desc||'');
   c.name=name.trim(); c.icon=icon.trim(); c.desc=desc.trim();
-  saveLocal(); renderCategories(); renderAdmPlans();
+  saveLocal(); renderCategories(); renderAdmPlans(); renderServicesPage();
   toast('✅ Category updated!');
 }
 function delCategory(id){
@@ -1239,7 +1260,7 @@ function delCategory(id){
   const planCount=DB.plans.filter(p=>String(p.type)===String(id)||p.type===c.name).length;
   if(planCount>0 && !confirm(`"${c.name}" has ${planCount} plan(s). Delete anyway?`)) return;
   DB.categories=DB.categories.filter(x=>x.id!==id);
-  saveLocal(); renderCategories(); renderAdmPlans();
+  saveLocal(); renderCategories(); renderAdmPlans(); renderServicesPage();
   toast('🗑 Category deleted.');
 }
 
@@ -1430,6 +1451,7 @@ function aAlert(id,msg,type){
   renderMcPlans();
   renderVpsPlans();
   renderPublicCustomCats();
+  renderServicesPage();
   renderCategories();
   renderLoc();
   // Hide loading screen
